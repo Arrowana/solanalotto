@@ -7,6 +7,7 @@ use solana_program::{
     program_pack::{Pack, IsInitialized},
     sysvar::{rent::Rent, Sysvar},
     program::{invoke, invoke_signed},
+    system_program,
     system_instruction
 };
 use crate::{instruction::LotteryInstruction, error::LotteryError, state::Lottery};
@@ -84,12 +85,18 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData); // Something isn't right here
         }
 
-        system_instruction::transfer(payer_account.key, lottery_account.key, lottery_info.ticket_price);
+        // Transfer of ticket price
+        **payer_account.lamports.borrow_mut() = payer_account.lamports()
+            .checked_sub(lottery_info.ticket_price)
+            .ok_or(LotteryError::TicketAmountMissing)?;
+        **lottery_account.lamports.borrow_mut() = lottery_account.lamports()
+            .checked_add(lottery_info.ticket_price)
+            .ok_or(LotteryError::AmountOverflow)?;
 
         // Write entry in entrants
         for entrant in lottery_info.entrants.iter_mut() {
             if *entrant == Pubkey::default() {
-
+                *entrant = *payer_account.key;
                 break
             }
         }

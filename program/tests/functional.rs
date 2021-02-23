@@ -5,12 +5,12 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::{Transaction},
 };
-use solanalotto::{processor::{Processor}, id, state::Lottery};
+use solanalotto::{processor::{Processor}, state::Lottery};
 use assert_matches::assert_matches;
 
 #[tokio::test]
 async fn test_lottery_initialization() {
-    let program_id = id();
+    let program_id = solanalotto::id();
     let mut pt = ProgramTest::new(
         "solanalotto",
         program_id,
@@ -55,13 +55,15 @@ async fn test_lottery_initialization() {
     assert_eq!(lottery_info.initializer_pubkey, payer.pubkey());
     assert_eq!(lottery_info.ticket_price, ticket_price);
     assert_eq!(lottery_info.entrants, expected_entrants);
+
+    assert_eq!(lottery_account.lamports, lottery_account_rent + ticket_price);
 }
 
 #[tokio::test]
 async fn test_enter_lottery() {
     // Create lottery, then get ticket
     // TODO: Share code with above init test
-    let program_id = id();
+    let program_id = solanalotto::id();
     let mut pt = ProgramTest::new(
         "solanalotto",
         program_id,
@@ -71,9 +73,11 @@ async fn test_enter_lottery() {
     let lottery_account_keypair = Keypair::new();
     let lottery_account_pubkey = lottery_account_keypair.pubkey();
 
-    // Not copy pasta
     let second_user_keypair = Keypair::new();
     pt.add_account(second_user_keypair.pubkey(), Account {lamports: 1000000000, ..Account::default()});
+
+    let third_user_keypair = Keypair::new();
+    pt.add_account(third_user_keypair.pubkey(), Account::default());
 
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
     let rent = banks_client.get_rent().await.unwrap();
@@ -103,15 +107,15 @@ async fn test_enter_lottery() {
     let mut transaction = Transaction::new_with_payer(
         &[Instruction {
                 program_id,
-                accounts: vec![AccountMeta::new(second_user_keypair.pubkey(), true), AccountMeta::new(lottery_account_pubkey, false)],
-                data: vec![1, 2, 3],
+                accounts: vec![AccountMeta::new_readonly(second_user_keypair.pubkey(), true), AccountMeta::new(lottery_account_pubkey, false)],
+                data: vec![1],
         }],
         Some(&second_user_keypair.pubkey()),
     );
     let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
     transaction.sign(&[&second_user_keypair], recent_blockhash);
     
-    assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));  // This hangs but why?!?
+    assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 
     let lottery_account = banks_client.get_account(lottery_account_pubkey).await.unwrap().unwrap();
     let lottery_info = Lottery::unpack_unchecked(&lottery_account.data).unwrap();
@@ -123,9 +127,31 @@ async fn test_enter_lottery() {
     assert_eq!(lottery_info.initializer_pubkey, payer.pubkey());
     assert_eq!(lottery_info.ticket_price, ticket_price);
     assert_eq!(lottery_info.entrants, expected_entrants);
+
+    assert_eq!(lottery_account.lamports, lottery_account_rent + 2 * ticket_price);
+
+    // Third user does not have ticket price
+    let mut transaction = Transaction::new_with_payer(
+        &[Instruction {
+                program_id,
+                accounts: vec![AccountMeta::new_readonly(second_user_keypair.pubkey(), true), AccountMeta::new(lottery_account_pubkey, false)],
+                data: vec![1],
+        }],
+        Some(&second_user_keypair.pubkey()),
+    );
+    let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    transaction.sign(&[&second_user_keypair], recent_blockhash);
+    
+    banks_client.process_transaction(transaction).await.unwrap();
+    //assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 }
 
 #[tokio::test]
 async fn test_lottery_concludes() {
     // Last user enters and lottery ends transfering lamports to winner
+}
+
+#[tokio::test]
+async fn test_lottery_cancel() {
+    // Test a lottery can only be cancelled when there are not entrants
 }
