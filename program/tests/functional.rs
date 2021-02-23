@@ -70,6 +70,8 @@ async fn test_enter_lottery() {
         processor!(Processor::process),
     );
 
+    let ticket_price = 10;
+
     let lottery_account_keypair = Keypair::new();
     let lottery_account_pubkey = lottery_account_keypair.pubkey();
 
@@ -77,12 +79,11 @@ async fn test_enter_lottery() {
     pt.add_account(second_user_keypair.pubkey(), Account {lamports: 1000000000, ..Account::default()});
 
     let third_user_keypair = Keypair::new();
-    pt.add_account(third_user_keypair.pubkey(), Account {lamports: 0, ..Account::default()});
+    //pt.add_account(third_user_keypair.pubkey(), Account {lamports: 0, ..Account::default()});
 
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let lottery_account_rent = rent.minimum_balance(Lottery::LEN);
-    let ticket_price = 10;
 
     let mut instruction_data = vec![0];
     instruction_data.extend_from_slice(&payer.pubkey().to_bytes());
@@ -136,6 +137,16 @@ async fn test_enter_lottery() {
 
     assert_eq!(lottery_account.lamports, lottery_account_rent + 2 * ticket_price);
 
+    // Fund third user
+    let mut transaction = Transaction::new_with_payer(
+        &[system_instruction::create_account(&payer.pubkey(), &third_user_keypair.pubkey(), rent.minimum_balance(0) + ticket_price - 1, 0, &third_user_keypair.pubkey())],
+        Some(&payer.pubkey()),
+    );
+    let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    transaction.sign(&[&payer, &third_user_keypair], recent_blockhash);
+    
+    banks_client.process_transaction(transaction).await.unwrap(); 
+
     // Third user does not have at least ticket price
     let mut transaction = Transaction::new_with_payer(
         &[Instruction {
@@ -152,8 +163,7 @@ async fn test_enter_lottery() {
     let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
     transaction.sign(&[&third_user_keypair], recent_blockhash);
     
-    banks_client.process_transaction(transaction).await.unwrap();
-    //assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
+    assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 }
 
 #[tokio::test]
