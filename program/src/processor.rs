@@ -75,6 +75,11 @@ impl Processor {
 
         let payer_account = next_account_info(account_info_iter)?; // Shortcut for now as we want to get that done
         let lottery_account = next_account_info(account_info_iter)?;
+        let system_program_account = next_account_info(account_info_iter)?;
+
+        if !payer_account.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         if lottery_account.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
@@ -86,12 +91,20 @@ impl Processor {
         }
 
         // Transfer of ticket price
-        **payer_account.lamports.borrow_mut() = payer_account.lamports()
-            .checked_sub(lottery_info.ticket_price)
-            .ok_or(LotteryError::TicketAmountMissing)?;
-        **lottery_account.lamports.borrow_mut() = lottery_account.lamports()
-            .checked_add(lottery_info.ticket_price)
-            .ok_or(LotteryError::AmountOverflow)?;
+        invoke(
+            &system_instruction::transfer(
+                &payer_account.key,
+                lottery_account.key,
+                lottery_info.ticket_price,
+            ),
+            &[
+                payer_account.clone(),
+                lottery_account.clone(),
+                system_program_account.clone(),
+            ],
+        )?;
+
+        // TODO: Detect if all entrants entered, give winnings to random entrant
 
         // Write entry in entrants
         for entrant in lottery_info.entrants.iter_mut() {

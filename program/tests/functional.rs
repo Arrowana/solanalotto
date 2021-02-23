@@ -1,4 +1,4 @@
-use solana_program::{instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction, sysvar::rent};
+use solana_program::{instruction::*, program_pack::Pack, pubkey::Pubkey, system_program, system_instruction, sysvar::rent};
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,
@@ -77,7 +77,7 @@ async fn test_enter_lottery() {
     pt.add_account(second_user_keypair.pubkey(), Account {lamports: 1000000000, ..Account::default()});
 
     let third_user_keypair = Keypair::new();
-    pt.add_account(third_user_keypair.pubkey(), Account::default());
+    pt.add_account(third_user_keypair.pubkey(), Account {lamports: 0, ..Account::default()});
 
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
     let rent = banks_client.get_rent().await.unwrap();
@@ -105,11 +105,17 @@ async fn test_enter_lottery() {
     // END of copy pasta
 
     let mut transaction = Transaction::new_with_payer(
-        &[Instruction {
+        &[
+            Instruction {
                 program_id,
-                accounts: vec![AccountMeta::new_readonly(second_user_keypair.pubkey(), true), AccountMeta::new(lottery_account_pubkey, false)],
+                accounts: vec![
+                    AccountMeta::new_readonly(second_user_keypair.pubkey(), true),
+                    AccountMeta::new(lottery_account_pubkey, false),
+                    AccountMeta::new(system_program::id(), false),
+                ],
                 data: vec![1],
-        }],
+            }
+        ],
         Some(&second_user_keypair.pubkey()),
     );
     let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
@@ -130,17 +136,21 @@ async fn test_enter_lottery() {
 
     assert_eq!(lottery_account.lamports, lottery_account_rent + 2 * ticket_price);
 
-    // Third user does not have ticket price
+    // Third user does not have at least ticket price
     let mut transaction = Transaction::new_with_payer(
         &[Instruction {
                 program_id,
-                accounts: vec![AccountMeta::new_readonly(second_user_keypair.pubkey(), true), AccountMeta::new(lottery_account_pubkey, false)],
+                accounts: vec![
+                    AccountMeta::new_readonly(third_user_keypair.pubkey(), true),
+                    AccountMeta::new(lottery_account_pubkey, false),
+                    AccountMeta::new(system_program::id(), false)
+                ],
                 data: vec![1],
         }],
-        Some(&second_user_keypair.pubkey()),
+        Some(&third_user_keypair.pubkey()),
     );
     let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
-    transaction.sign(&[&second_user_keypair], recent_blockhash);
+    transaction.sign(&[&third_user_keypair], recent_blockhash);
     
     banks_client.process_transaction(transaction).await.unwrap();
     //assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
