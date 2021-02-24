@@ -107,6 +107,7 @@ impl Processor {
         // TODO: Detect if all entrants entered, give winnings to random entrant
 
         // Write entry in entrants
+        // TODO: Do not allow payer to enter more than once
         for entrant in lottery_info.entrants.iter_mut() {
             if *entrant == Pubkey::default() {
                 *entrant = *payer_account.key;
