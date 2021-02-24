@@ -209,6 +209,8 @@ async fn test_lottery_concludes() {
 
     assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 
+    let payer_lamports = banks_client.get_account(payer.pubkey()).await.unwrap().unwrap().lamports;
+
     // Iterate 4 different payers, to send to lottery
     for keypair in user_keypairs.iter() {
         let mut transaction = Transaction::new_with_payer(
@@ -231,7 +233,20 @@ async fn test_lottery_concludes() {
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
     }
 
-    // That's it
+    // That's it, check that one of the lucky boy received all the money!
+    let mut found_winner = false;
+    for keypair in user_keypairs.iter() {
+        let user_account = banks_client.get_account(keypair.pubkey()).await.unwrap().unwrap();
+        if user_account.lamports == ticket_price * (2 - 1 + 5) {
+            found_winner = true;
+            break;
+        }
+    }
+    let payer_account = banks_client.get_account(payer.pubkey()).await.unwrap().unwrap();
+    if payer_account.lamports == payer_lamports + ticket_price * 5 {
+        found_winner = true;
+    }
+    assert_eq!(found_winner, true);
 }
 
 #[tokio::test]
