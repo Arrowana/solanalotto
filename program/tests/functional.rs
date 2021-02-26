@@ -239,30 +239,30 @@ async fn test_lottery_concludes() {
         .expect("Could not find winner in user keypairs");
 
     // Winner gets his winnings
+    let winner_account_lamports = banks_client.get_account(winner_keypair.pubkey()).await.unwrap().unwrap().lamports;
     let mut transaction = Transaction::new_with_payer(
         &[
             Instruction {
                 program_id,
                 accounts: vec![
-                    AccountMeta::new_readonly(winner_keypair.pubkey(), true),
+                    AccountMeta::new(winner_keypair.pubkey(), true),
                     AccountMeta::new(lottery_account_pubkey, false),
-                    AccountMeta::new(system_program::id(), false),
                 ],
                 data: vec![2],
             }
         ],
-        Some(&winner_keypair.pubkey()),
+        Some(&payer.pubkey()),
     );
     let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
-    transaction.sign(&[winner_keypair], recent_blockhash);
+    transaction.sign(&[winner_keypair, &payer], recent_blockhash);
 
     assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 
     let winner_account = banks_client.get_account(lottery_info.winner).await.unwrap().unwrap();
-    assert_eq!(winner_account.lamports, ticket_price * (2 - 1 + 4));
+    assert_eq!(winner_account.lamports, winner_account_lamports + lottery_account_rent + 5 * ticket_price);
 }
 
 #[tokio::test]
 async fn test_lottery_cancel() {
-    // Test a lottery can only be cancelled when there are not entrants
+    // Test a lottery can only be cancelled when there is no other entrant than the initializer or some deal like that
 }

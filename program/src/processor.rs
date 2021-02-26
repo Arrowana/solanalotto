@@ -92,7 +92,7 @@ impl Processor {
 
         let mut lottery_info = Lottery::unpack_unchecked(&lottery_account.data.borrow())?;
         if !lottery_info.is_initialized() {
-            return Err(ProgramError::InvalidAccountData); // Something isn't right here
+            return Err(ProgramError::InvalidAccountData);
         }
 
         if lottery_info.winner != Pubkey::default() {
@@ -125,7 +125,7 @@ impl Processor {
         }
 
         if entrants_count == ENTRANT_COUNT {
-            lottery_info.winner = lottery_info.entrants[2];  // TODO: Make this some random
+            lottery_info.winner = lottery_info.entrants[2];  // TODO: Make this random somehow
         }
 
         Lottery::pack(lottery_info, &mut lottery_account.data.borrow_mut())?;
@@ -137,6 +137,34 @@ impl Processor {
         accounts: &[AccountInfo],
         program_id: &Pubkey,
     ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+
+        let winner_account = next_account_info(account_info_iter)?;
+        let lottery_account = next_account_info(account_info_iter)?;
+
+        if !winner_account.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        if lottery_account.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        let lottery_info = Lottery::unpack_unchecked(&lottery_account.data.borrow())?;
+        if !lottery_info.is_initialized() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        if *winner_account.key != lottery_info.winner  {
+            return Err(ProgramError::InvalidAccountData); // TODO: Better error here?
+        }
+
+        **winner_account.lamports.borrow_mut() = winner_account
+            .lamports()
+            .checked_add(lottery_account.lamports())
+            .ok_or(LotteryError::AmountOverflow)?;
+        msg!("Closing the lottery account");
+        **lottery_account.lamports.borrow_mut() = 0;
 
         Ok(())
     }
