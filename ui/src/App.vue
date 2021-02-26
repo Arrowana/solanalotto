@@ -1,21 +1,35 @@
 <template>
   <div id="app">
-    <p>Hello</p>
+    <p>Solanalotto</p>
     <div>
-      <label>Private key</label>
-      <input v-model="privateKey">
-      <label>Program id</label>
-      <input v-model="programId">
-      <label>Program id</label>
+      <ul>
+        <li>
+          <label>Private key:</label>
+          <input v-model="privateKey">
+        </li>
+        <li>
+          <label>Program id:</label>
+          <input v-model="programId">
+        </li>
+      </ul>
     </div>
+    <CreateLottery :privateKey="privateKey" :programId="programId" />
+    <Lotteries />
   </div>
 </template>
 
 <script>
 //import HelloWorld from './components/HelloWorld.vue'
+import CreateLottery from './components/CreateLottery.vue'
+import Lotteries from './components/Lotteries.vue'
 
 export default {
   name: 'App',
+  data: function() { return {privateKey: '', programId: ''}; },
+  components: {
+    CreateLottery,
+    Lotteries
+  }
 }
 </script>
 
@@ -27,5 +41,8 @@ export default {
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+}
+ul {
+  list-style-type: none;
 }
 </style>

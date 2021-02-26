@@ -1,75 +1,55 @@
-  
-import { AccountLayout, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Account, Connection, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from '@solana/web3.js';
 import BN from 'bn.js';
-import { ESCROW_ACCOUNT_DATA_LAYOUT } from './layout';
+import { LOTTERY_ACCOUNT_DATA_LAYOUT } from './layout';
 
 const connection = new Connection("http://localhost:8899", 'singleGossip');
 
 export const initLottery = async (
     privateKeyByteArray,
-    initializerXTokenAccountPubkeyString,
-    amountXTokensToSendToEscrow,
-    initializerReceivingTokenAccountPubkeyString,
-    expectedAmount,
-    escrowProgramIdString) => {
-    const initializerXTokenAccountPubkey = new PublicKey(initializerXTokenAccountPubkeyString);
-
-    const XTokenMintAccountPubkey = new PublicKey((await connection.getParsedAccountInfo(initializerXTokenAccountPubkey, 'singleGossip')).value.data.parsed.info.mint);
-
+    initializerSystemAccountPubkeyString,
+    ticketPrice,
+    lotteryProgramIdString) => {
     const privateKeyDecoded = privateKeyByteArray.split(',').map(s => parseInt(s));
+    const initializerSystemAccountPubkey = new PublicKey(initializerSystemAccountPubkeyString);
     const initializerAccount = new Account(privateKeyDecoded);
+    const lotteryProgramId = new PublicKey(lotteryProgramIdString);
 
-    const tempTokenAccount = new Account();
-    const createTempTokenAccountIx = SystemProgram.createAccount({
-        programId: TOKEN_PROGRAM_ID,
+    const lotteryAccount = new Account();
+    const createLotteryAccountIx = SystemProgram.createAccount({
+        fromPubkey: initializerAccount.publicKey,
+        newAccountPubkey: lotteryAccount.publicKey,
         space: AccountLayout.span,
         lamports: await connection.getMinimumBalanceForRentExemption(AccountLayout.span, 'singleGossip'),
-        fromPubkey: initializerAccount.publicKey,
-        newAccountPubkey: tempTokenAccount.publicKey
-    });
-    const initTempAccountIx = Token.createInitAccountInstruction(TOKEN_PROGRAM_ID, XTokenMintAccountPubkey, tempTokenAccount.publicKey, initializerAccount.publicKey);
-    const transferXTokensToTempAccIx = Token
-        .createTransferInstruction(TOKEN_PROGRAM_ID, initializerXTokenAccountPubkey, tempTokenAccount.publicKey, initializerAccount.publicKey, [], amountXTokensToSendToEscrow);
-    
-    const escrowAccount = new Account();
-    const escrowProgramId = new PublicKey(escrowProgramIdString);
-
-    const createEscrowAccountIx = SystemProgram.createAccount({
-        space: ESCROW_ACCOUNT_DATA_LAYOUT.span,
-        lamports: await connection.getMinimumBalanceForRentExemption(ESCROW_ACCOUNT_DATA_LAYOUT.span, 'singleGossip'),
-        fromPubkey: initializerAccount.publicKey,
-        newAccountPubkey: escrowAccount.publicKey,
-        programId: escrowProgramId
+        programId: LOTTERY_PROGRAM_PUBKEY,
     });
 
-    const initEscrowIx = new TransactionInstruction({
-        programId: escrowProgramId,
+    const initLotteryIx = new TransactionInstruction({
+        programId: lotteryProgramId,
         keys: [
             { pubkey: initializerAccount.publicKey, isSigner: true, isWritable: false },
-            { pubkey: tempTokenAccount.publicKey, isSigner: false, isWritable: true },
-            { pubkey: new PublicKey(initializerReceivingTokenAccountPubkeyString), isSigner: false, isWritable: false },
-            { pubkey: escrowAccount.publicKey, isSigner: false, isWritable: true },
+            { pubkey: lotteryAccount.publicKey, isSigner: false, isWritable: true },
             { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
-            { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
         ],
-        data: Buffer.from(Uint8Array.of(0, ...new BN(expectedAmount).toArray("le", 8)))
+        data: Buffer.from(Uint8Array.of(0, ...new BN(ticketPrice).toArray("le", 8)))
     })
 
     const tx = new Transaction()
-        .add(createTempTokenAccountIx, initTempAccountIx, transferXTokensToTempAccIx, createEscrowAccountIx, initEscrowIx);
-    await connection.sendTransaction(tx, [initializerAccount, tempTokenAccount, escrowAccount], {skipPreflight: false, preflightCommitment: 'singleGossip'});
+        .add(createLotteryAccountIx, initLotteryIx);
+    await connection.sendTransaction(tx, [lotteryAccount], {skipPreflight: false, preflightCommitment: 'singleGossip'});
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const encodedEscrowState = (await connection.getAccountInfo(escrowAccount.publicKey, 'singleGossip')).data;
-    const decodedEscrowState = ESCROW_ACCOUNT_DATA_LAYOUT.decode(encodedEscrowState);
+    const encodedLotteryState = (await connection.getAccountInfo(lotteryAccount.publicKey, 'singleGossip')).data;
+    const decodedLotteryState = LOTTERY_ACCOUNT_DATA_LAYOUT.decode(encodedLotteryState);
     return {
-        escrowAccountPubkey: escrowAccount.publicKey.toBase58(),
-        isInitialized: !!decodedEscrowState.isInitialized,
-        initializerAccountPubkey: new PublicKey(decodedEscrowState.initializerPubkey).toBase58(),
-        XTokenTempAccountPubkey: new PublicKey(decodedEscrowState.initializerTempTokenAccountPubkey).toBase58(),
-        initializerYTokenAccount: new PublicKey(decodedEscrowState.initializerReceivingTokenAccountPubkey).toBase58(),
-        expectedAmount: new BN(decodedEscrowState.expectedAmount, 10, "le").toNumber()
+        lotteryAccountPubkey: escrowAccount.publicKey.toBase58(),
+        isInitialized: !!decodedLotteryState.isInitialized,
+        initializerAccountPubkey: new PublicKey(decodedLotteryState.initializerPubkey).toBase58(),
+        ticketPrice: new BN(decodedLotteryState.ticketPrice, 10, "le").toNumber(),
+        winnerAccountPubkey: new PublicKey(decodedLotteryState.winnerAccountPubkey).toBase58(),
+        //entrants :S
     };
 }
+
+export const enterLottery = async () => {};
+export const receiveLotteryWinnings = async () => {};
