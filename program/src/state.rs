@@ -23,7 +23,7 @@ impl IsInitialized for Lottery {
     }
 }
 
-const ENTRANT_COUNT:usize = 5;  // We can make this dynamic but that would complexify a fair bit
+pub const ENTRANT_COUNT:usize = 5;  // We can make this dynamic but that would complexify a fair bit
 
 impl Pack for Lottery {
     const LEN: usize = 1 + 32 + 8 + 32 + 32 * ENTRANT_COUNT;

@@ -10,7 +10,7 @@ use solana_program::{
     system_program,
     system_instruction
 };
-use crate::{instruction::LotteryInstruction, error::LotteryError, state::Lottery};
+use crate::{instruction::LotteryInstruction, error::LotteryError, state::{Lottery, ENTRANT_COUNT}};
 
 pub struct Processor;
 impl Processor {
@@ -95,6 +95,10 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData); // Something isn't right here
         }
 
+        if lottery_info.winner != Pubkey::default() {
+            return Err(LotteryError::LotteryFinished.into());
+        }
+
         // Transfer of ticket price
         invoke(
             &system_instruction::transfer(
@@ -111,14 +115,18 @@ impl Processor {
 
         // Write entry in entrants
         // TODO: Do not allow payer to enter more than once
+        let mut entrants_count = 1;
         for entrant in lottery_info.entrants.iter_mut() {
             if *entrant == Pubkey::default() {
                 *entrant = *payer_account.key;
                 break
             }
+            entrants_count += 1;
         }
 
-        // TODO: Detect if all entrants entered, give winnings to random entrant
+        if entrants_count == ENTRANT_COUNT {
+            lottery_info.winner = lottery_info.entrants[2];  // TODO: Make this some random
+        }
 
         Lottery::pack(lottery_info, &mut lottery_account.data.borrow_mut())?;
 

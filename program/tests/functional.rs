@@ -209,8 +209,6 @@ async fn test_lottery_concludes() {
 
     assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 
-    let payer_lamports = banks_client.get_account(payer.pubkey()).await.unwrap().unwrap().lamports;
-
     // Iterate 4 different payers, to send to lottery
     for keypair in user_keypairs.iter() {
         let mut transaction = Transaction::new_with_payer(

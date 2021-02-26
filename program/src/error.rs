@@ -19,6 +19,9 @@ pub enum LotteryError {
     /// Amount Overflow
     #[error("Amount Overflow")]
     AmountOverflow,
+    /// Lottery Finished
+    #[error("Lottery Finished")]
+    LotteryFinished,
 }
 
 impl From<LotteryError> for ProgramError {
