@@ -25,6 +25,10 @@ impl Processor {
             LotteryInstruction::Enter => {
                 msg!("Instruction: Enter");
                 Self::process_enter(accounts, program_id)
+            },
+            LotteryInstruction::Receive => {
+                msg!("Instruction: Receive");
+                Self::process_receive(accounts, program_id)
             }
         }
     }
@@ -56,6 +60,7 @@ impl Processor {
         lottery_info.is_initialized = true;
         lottery_info.initializer_pubkey = *initializer_pubkey;
         lottery_info.ticket_price = lottery_account.lamports() - account_rent_exempt_minimum_balance;
+        lottery_info.winner = Pubkey::default();
         lottery_info.entrants[0] = *initializer_pubkey;
         // Default remaining entrants
         for entrant in lottery_info.entrants[1..].iter_mut() {
@@ -104,8 +109,6 @@ impl Processor {
             ],
         )?;
 
-        // TODO: Detect if all entrants entered, give winnings to random entrant
-
         // Write entry in entrants
         // TODO: Do not allow payer to enter more than once
         for entrant in lottery_info.entrants.iter_mut() {
@@ -115,7 +118,17 @@ impl Processor {
             }
         }
 
+        // TODO: Detect if all entrants entered, give winnings to random entrant
+
         Lottery::pack(lottery_info, &mut lottery_account.data.borrow_mut())?;
+
+        Ok(())
+    }
+
+    fn process_receive(
+        accounts: &[AccountInfo],
+        program_id: &Pubkey,
+    ) -> ProgramResult {
 
         Ok(())
     }

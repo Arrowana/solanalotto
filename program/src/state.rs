@@ -11,6 +11,7 @@ pub struct Lottery {
     pub is_initialized: bool,
     pub initializer_pubkey: Pubkey,  // Let's get that here for the eventual cancel, or why not the first entrant then?
     pub ticket_price: u64,
+    pub winner: Pubkey,
     pub entrants: [Pubkey; 5], // Let's start with static number of entrants but this could be dynamic given initializer choice, or more sophisticated to be unlimited
 }
 
@@ -25,15 +26,16 @@ impl IsInitialized for Lottery {
 const ENTRANT_COUNT:usize = 5;  // We can make this dynamic but that would complexify a fair bit
 
 impl Pack for Lottery {
-    const LEN: usize = 41 + 32 * ENTRANT_COUNT;
+    const LEN: usize = 1 + 32 + 8 + 32 + 32 * ENTRANT_COUNT;
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        let src = array_ref![src, 0, 201];
+        let src = array_ref![src, 0, 233];
         let (
             is_initialized,
             initializer_pubkey,
             ticket_price_slice,
+            winner_pubkey_slice,
             entrants_slice
-        ) = array_refs![src, 1, 32, 8, 32 * ENTRANT_COUNT];
+        ) = array_refs![src, 1, 32, 8, 32, 32 * ENTRANT_COUNT];
         let is_initialized = match is_initialized {
             [0] => false,
             [1] => true,
@@ -49,6 +51,7 @@ impl Pack for Lottery {
             is_initialized,
             initializer_pubkey: Pubkey::new_from_array(*initializer_pubkey),
             ticket_price: u64::from_le_bytes(*ticket_price_slice),
+            winner: Pubkey::new_from_array(*winner_pubkey_slice),
             entrants
         })
     }
@@ -59,19 +62,23 @@ impl Pack for Lottery {
             is_initialized_dst,
             initializer_pubkey_dst,
             ticket_price_dst,
+            winner_pubkey_dst,
             entrants_dst,
-        ) = mut_array_refs![dst, 1, 32, 8, 32 * ENTRANT_COUNT];
+        ) = mut_array_refs![dst, 1, 32, 8, 32, 32 * ENTRANT_COUNT];
 
         let Lottery {
             is_initialized,
             initializer_pubkey,
             ticket_price,
+            winner,
             entrants
         } = self;
 
         is_initialized_dst[0] = *is_initialized as u8;
         initializer_pubkey_dst.copy_from_slice(initializer_pubkey.as_ref());
         *ticket_price_dst = ticket_price.to_le_bytes();
+        winner_pubkey_dst.copy_from_slice(winner.as_ref());
+
         let mut i = 0;
         entrants_dst.copy_from_slice(&[0u8; 160]);
         for entrant in entrants.iter() { // TODO: Find better way to perform this business

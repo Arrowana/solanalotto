@@ -233,20 +233,35 @@ async fn test_lottery_concludes() {
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
     }
 
-    // That's it, check that one of the lucky boy received all the money!
-    let mut found_winner = false;
-    for keypair in user_keypairs.iter() {
-        let user_account = banks_client.get_account(keypair.pubkey()).await.unwrap().unwrap();
-        if user_account.lamports == ticket_price * (2 - 1 + 5) {
-            found_winner = true;
-            break;
-        }
-    }
-    let payer_account = banks_client.get_account(payer.pubkey()).await.unwrap().unwrap();
-    if payer_account.lamports == payer_lamports + ticket_price * 5 {
-        found_winner = true;
-    }
-    assert_eq!(found_winner, true);
+    let lottery_account = banks_client.get_account(lottery_account_pubkey).await.unwrap().unwrap();
+    let lottery_info = Lottery::unpack_unchecked(&lottery_account.data).unwrap();
+
+    let winner_keypair = user_keypairs.iter()
+        .find(|keypair| keypair.pubkey() == lottery_info.winner)
+        .expect("Could not find winner in user keypairs");
+
+    // Winner gets his winnings
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            Instruction {
+                program_id,
+                accounts: vec![
+                    AccountMeta::new_readonly(winner_keypair.pubkey(), true),
+                    AccountMeta::new(lottery_account_pubkey, false),
+                    AccountMeta::new(system_program::id(), false),
+                ],
+                data: vec![2],
+            }
+        ],
+        Some(&winner_keypair.pubkey()),
+    );
+    let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    transaction.sign(&[winner_keypair], recent_blockhash);
+
+    assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
+
+    let winner_account = banks_client.get_account(lottery_info.winner).await.unwrap().unwrap();
+    assert_eq!(winner_account.lamports, ticket_price * (2 - 1 + 4));
 }
 
 #[tokio::test]

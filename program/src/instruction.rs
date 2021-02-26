@@ -11,7 +11,8 @@ pub enum LotteryInstruction {
     InitLottery {
         initializer_pubkey: Pubkey
     },
-    Enter
+    Enter,
+    Receive
 }
 
 impl LotteryInstruction {
@@ -24,6 +25,7 @@ impl LotteryInstruction {
                 initializer_pubkey: Pubkey::new(rest),
             },
             1 => Self::Enter,
+            2 => Self::Receive,
             _ => return Err(InvalidInstruction.into()),
         })
     }
