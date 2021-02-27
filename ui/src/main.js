@@ -1,6 +1,5 @@
 import Vue from 'vue'
 import App from './App.vue'
-//import { initLottery } from './lottery';
 
 Vue.config.productionTip = false
 

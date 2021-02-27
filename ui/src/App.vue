@@ -6,6 +6,7 @@
         <li>
           <label>Private key:</label>
           <input v-model="privateKey">
+          <p v-if="privateKeyError">{{ privateKeyError }}</p>
         </li>
         <li>
           <label>Program id:</label>
@@ -14,12 +15,12 @@
       </ul>
     </div>
     <CreateLottery :privateKey="privateKey" :programId="programId" />
-    <Lotteries :lotteries="lotteries" @enter="onEnter" />
+    <Lotteries :lotteries="lotteries" :userAccountPubkey="userAccountPubkey" @enter="onEnter" />
   </div>
 </template>
 
 <script>
-import { getLotteriesForProgramId, enterLottery } from './lottery'
+import { privateKeyByteArrayStringToPublicKey, getLotteriesForProgramId, enterLottery } from './lottery'
 import CreateLottery from './components/CreateLottery.vue'
 import Lotteries from './components/Lotteries.vue'
 
@@ -27,7 +28,9 @@ export default {
   name: 'App',
   data: function() {
     return {
+      userAccountPubkey: null,
       privateKey: '',
+      privateKeyError: null,
       programId: '',
       lotteries: []
     };
@@ -39,6 +42,16 @@ export default {
   watch: {
     programId: async function() {
       await this.fetchLotteries();
+    },
+    privateKey: function(value) {
+      try {
+        this.privateKeyError = null;
+        this.userAccountPubkey = privateKeyByteArrayStringToPublicKey(value).toBase58();
+      }
+      catch(e) {
+        this.privateKeyError = e.message;
+        this.userAccountPubkey = null;
+      }
     }
   },
   methods: {
