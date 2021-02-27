@@ -5,26 +5,27 @@
         Ongoing lotteries
     </p>
     <div>
-      <ul v-for="lottery in lotteries" :key="lottery.pubkey">
-        <li>Lottery account <a href="Explorer">{{ lottery.pubkey }}</a></li>
-        <li>Ticket price: {{ lottery.ticketPrice }} SOL</li>
-        <li>Entrants: {{ lottery.entrant_count }}/{{ lottery.max_entrant_count }}</li>
-        <li v-if="lottery.winnerPubkey">Winner <a href="">{{ lottery.winnerPubkey }}</a></li>
-        <button v-if="!lottery.winnerPubkey">Enter</button>
+      <ul v-for="(lottery, index) in lotteries" :key="index">
+        <li>Lottery account <a :href="`https://explorer.solana.com/address/${lottery.lotteryAccountPubkey}?customUrl=http://127.0.0.1:8899&cluster=custom`">{{ lottery.lotteryAccountPubkey.slice(0, 8) }}...</a></li>
+        <li>Ticket price: {{ lottery.ticketPrice / 1000000000 }} SOL</li>
+        <li>Winnings: {{ lottery.ticketPrice / 1000000000 * lottery.max_entrant_count}} SOL</li>
+        <li>Entrants: {{ lottery.entrants.length }}/{{ lottery.max_entrant_count }}</li>
+        <li v-if="lottery.winnerAccountPubkey">Winner <a href="">{{ lottery.winnerAccountPubkey }}</a></li>
+        <button v-if="!lottery.winnerAccountPubkey" v-on:click="enter(lottery)">Enter</button>
       </ul>
+      <p v-if="lotteries.length == 0">No lottery</p>
     </div>
   </div>
 </template>
 
 <script>
 export default {
-  data: function() {
-    return {
-      lotteries: [
-        {pubkey: '0x19d12s', ticketPrice: 100, winnerPubkey: null, entrant_count: 2, max_entrant_count: 5},
-        {pubkey: '0x10924A', ticketPrice: 4.2, winnerPubkey: null, entrant_count: 1, max_entrant_count: 5},
-        {pubkey: '0x10921A', ticketPrice: 4.2, winnerPubkey: '0x12890734', entrant_count: 5, max_entrant_count: 5}
-    ]};
+  props: ['lotteries'],
+  methods: {
+    enter: function(lottery) {
+      console.log(`From lottery`);
+      this.$emit('enter', lottery);
+    }
   }
 }
 </script>

@@ -14,5 +14,5 @@ export const LOTTERY_ACCOUNT_DATA_LAYOUT = BufferLayout.struct([
     publicKey("initializerPubkey"),
     uint64("ticketPrice"),
     publicKey("winnerAccountPubkey"),
-    BufferLayout.seq(publicKey(), ENTRANT_COUNT)
+    BufferLayout.seq(publicKey(), ENTRANT_COUNT, "entrants")
 ]);

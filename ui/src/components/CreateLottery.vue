@@ -17,12 +17,14 @@ export default {
     programId: {type: String, required: true}
   },
   methods: {
-    create: function() {
-      return initLottery(
+    create: async function() {
+      const lotteryInfo = await initLottery(
         this.$props.privateKey,
         this.$data.ticketPrice,
         this.$props.programId
       );
+
+      console.log(`lotteryInfo: ${lotteryInfo.ticketPrice}`);
     },
     canCreate: function() {
       return this.$propsprivateKey !== '' && this.$props.programId !== '';

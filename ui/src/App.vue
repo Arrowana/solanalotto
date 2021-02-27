@@ -14,20 +14,49 @@
       </ul>
     </div>
     <CreateLottery :privateKey="privateKey" :programId="programId" />
-    <Lotteries />
+    <Lotteries :lotteries="lotteries" @enter="onEnter" />
   </div>
 </template>
 
 <script>
+import { getLotteriesForProgramId, enterLottery } from './lottery'
 import CreateLottery from './components/CreateLottery.vue'
 import Lotteries from './components/Lotteries.vue'
 
 export default {
   name: 'App',
-  data: function() { return {privateKey: '', programId: ''}; },
+  data: function() {
+    return {
+      privateKey: '',
+      programId: '',
+      lotteries: []
+    };
+  },
   components: {
     CreateLottery,
     Lotteries
+  },
+  watch: {
+    programId: async function() {
+      await this.fetchLotteries();
+    }
+  },
+  methods: {
+    onEnter: async function(lottery) {
+      console.log(`The parent gets ${lottery}`);
+      const lotteryInfo = await enterLottery(
+        this.privateKey,
+        lottery.lotteryAccountPubkey,
+        this.programId
+      );
+      console.log(lotteryInfo);
+      await this.fetchLotteries();
+    },
+    fetchLotteries: async function() {
+      const lotteries = await getLotteriesForProgramId(this.$data.programId);
+      console.log(lotteries);
+      this.lotteries = lotteries;
+    }
   }
 }
 </script>
