@@ -19,7 +19,6 @@
 </template>
 
 <script>
-//import HelloWorld from './components/HelloWorld.vue'
 import CreateLottery from './components/CreateLottery.vue'
 import Lotteries from './components/Lotteries.vue'
 

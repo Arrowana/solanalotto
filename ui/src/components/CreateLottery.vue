@@ -8,6 +8,8 @@
 </template>
 
 <script>
+import { initLottery } from '../lottery'
+
 export default {
   data: function() { return {ticketPrice: 1}; },
   props: {
@@ -16,7 +18,11 @@ export default {
   },
   methods: {
     create: function() {
-      // TODO
+      return initLottery(
+        this.$props.privateKey,
+        this.$data.ticketPrice,
+        this.$props.programId
+      );
     },
     canCreate: function() {
       return this.$propsprivateKey !== '' && this.$props.programId !== '';
