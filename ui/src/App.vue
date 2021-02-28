@@ -22,7 +22,7 @@
 
 <script>
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { privateKeyByteArrayStringToAccount, getAccountInfo, getLotteriesForProgramId, enterLottery } from './lottery'
+import { privateKeyByteArrayStringToAccount, getAccountInfo, getLotteriesForProgramId, enterLottery, receiveLotteryWinnings } from './lottery'
 import CreateLottery from './components/CreateLottery.vue'
 import Lotteries from './components/Lotteries.vue'
 
@@ -30,9 +30,9 @@ export default {
   name: 'App',
   data: function() {
     return {
-      userAccountPubkey: null,
+      userAccount: null,
+      userAccountInfo: null,
       privateKey: '',
-      sol: null,
       privateKeyError: null,
       programId: '',
       lotteries: []
@@ -48,21 +48,26 @@ export default {
     },
     privateKey: async function(value) {
       this.privateKeyError = null;
-      this.sol = 0;
+      this.userAccount = null;
       try {
-        const userAccount = privateKeyByteArrayStringToAccount(value);
-        this.sol = (await getAccountInfo(userAccount)).lamports / LAMPORTS_PER_SOL;
-        this.userAccountPubkey = userAccount.publicKey.toBase58();
+        this.userAccount = privateKeyByteArrayStringToAccount(value);
+        this.userAccountInfo = await getAccountInfo(this.userAccount);
       }
       catch(e) {
         this.privateKeyError = e.message;
-        this.userAccountPubkey = null;
       }
+    }
+  },
+  computed: {
+    userAccountPubkey: function() {
+      return this.userAccount?.publicKey.toBase58();
+    },
+    sol: function() {
+      return this.userAccountInfo?.lamports / LAMPORTS_PER_SOL;
     }
   },
   methods: {
     onEnter: async function(lottery) {
-      console.log(`The parent gets ${lottery}`);
       const lotteryInfo = await enterLottery(
         this.privateKey,
         lottery.lotteryAccountPubkey,
@@ -70,6 +75,17 @@ export default {
       );
       console.log(lotteryInfo);
       await this.fetchLotteries();
+      this.userAccountInfo = await getAccountInfo(this.userAccount);
+    },
+    onReceive: async function(lottery) {
+      const lotteryInfo = await receiveLotteryWinnings(
+        this.privateKey,
+        lottery.lotteryAccountPubkey,
+        this.programId,
+      );
+      console.log(lotteryInfo);
+      await this.fetchLotteries();
+      this.userAccountInfo = await getAccountInfo(this.userAccount);
     },
     fetchLotteries: async function() {
       const lotteries = await getLotteriesForProgramId(this.$data.programId);

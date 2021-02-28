@@ -83,6 +83,36 @@ export const enterLottery = async (
     return lotteryAccountInfoToLotteryInfo(lotteryAccountPubkey, lotteryAccountInfo);
 };
 
+export const receiveLotteryWinnings = async (
+    privateKeyByteArray,
+    lotteryAccountPubkeyString,
+    lotteryProgramIdString
+) => {
+    const privateKeyDecoded = privateKeyByteArray.split(',').map(s => parseInt(s));
+    const winnerAccount = new Account(privateKeyDecoded);
+    const lotteryAccountPubkey = new PublicKey(lotteryAccountPubkeyString);
+    const lotteryProgramId = new PublicKey(lotteryProgramIdString);
+
+    const receiveLotteryIx = new TransactionInstruction({
+        programId: lotteryProgramId,
+        keys: [
+            { pubkey: winnerAccount.publicKey, isSigner: true, isWritable: false },
+            { pubkey: lotteryAccountPubkey, isSigner: false, isWritable: true },
+        ],
+        data: Buffer.from([2])
+    });
+
+    const tx = new Transaction()
+        .add(receiveLotteryIx);
+    const signature = await connection.sendTransaction(tx, [winnerAccount], {skipPreflight: false, preflightCommitment: 'singleGossip'});
+    console.log(`Tx signature: ${signature}`);
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const lotteryAccountInfo = await connection.getAccountInfo(lotteryAccountPubkey, 'singleGossip');
+    return lotteryAccountInfoToLotteryInfo(lotteryAccountPubkey, lotteryAccountInfo);
+};
+
 const unitializedPubkey = '11111111111111111111111111111111';
 
 export const lotteryAccountInfoToLotteryInfo = (lotteryAccountPubkey, lotteryAccountInfo) => {
@@ -102,8 +132,6 @@ export const lotteryAccountInfoToLotteryInfo = (lotteryAccountPubkey, lotteryAcc
         max_entrant_count: 5
     };
 };
-
-export const receiveLotteryWinnings = async () => {};
 
 export const getLotteriesForProgramId = async (lotteryProgramIdString) => {
     const lotteryProgramId = new PublicKey(lotteryProgramIdString);
