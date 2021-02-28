@@ -16,7 +16,7 @@
       <p v-if="sol">{{ sol }} SOL</p>
     </div>
     <CreateLottery :privateKey="privateKey" :programId="programId" />
-    <Lotteries :lotteries="lotteries" :userAccountPubkey="userAccountPubkey" @enter="onEnter" />
+    <Lotteries :lotteries="lotteries" :userAccountPubkey="userAccountPubkey" @enter="onEnter" @receive="onReceive" />
   </div>
 </template>
 

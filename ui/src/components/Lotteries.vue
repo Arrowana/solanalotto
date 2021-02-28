@@ -11,7 +11,7 @@
         <li>Winnings: {{ lottery.ticketPrice / LAMPORTS_PER_SOL * lottery.max_entrant_count}} SOL</li>
         <li>Entrants: {{ lottery.entrants.length }}/{{ lottery.max_entrant_count }}</li>
         <li v-if="lottery.winnerAccountPubkey">Winner <a href="">{{ lottery.winnerAccountPubkey }}</a></li>
-        <li v-if="userAccountPubkey && userAccountPubkey === lottery.winnerAccountPubkey"><button id="claim">Claim</button></li>
+        <li v-if="userAccountPubkey && userAccountPubkey === lottery.winnerAccountPubkey"><button id="claim" v-on:click="receive(lottery)">Claim</button></li>
         <button v-if="userAccountPubkey && !lottery.winnerAccountPubkey && !lottery.entrants.includes(userAccountPubkey)" v-on:click="enter(lottery)">Enter</button>
         <p v-if="lottery.entrants.includes(userAccountPubkey)">Entered</p>
       </ul>
@@ -32,8 +32,10 @@ export default {
   },
   methods: {
     enter: function(lottery) {
-      console.log(`From lottery`);
       this.$emit('enter', lottery);
+    },
+    receive: function(lottery) {
+      this.$emit('receive', lottery);
     }
   }
 }

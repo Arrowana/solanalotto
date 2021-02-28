@@ -106,11 +106,6 @@ export const receiveLotteryWinnings = async (
         .add(receiveLotteryIx);
     const signature = await connection.sendTransaction(tx, [winnerAccount], {skipPreflight: false, preflightCommitment: 'singleGossip'});
     console.log(`Tx signature: ${signature}`);
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const lotteryAccountInfo = await connection.getAccountInfo(lotteryAccountPubkey, 'singleGossip');
-    return lotteryAccountInfoToLotteryInfo(lotteryAccountPubkey, lotteryAccountInfo);
 };
 
 const unitializedPubkey = '11111111111111111111111111111111';
