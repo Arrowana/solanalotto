@@ -2,7 +2,11 @@ import { Account, Connection, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Tran
 import BN from 'bn.js';
 import { LOTTERY_ACCOUNT_DATA_LAYOUT } from './layout';
 
-const connection = new Connection("http://localhost:8899", 'singleGossip');
+let connection = new Connection("http://localhost:8899", 'singleGossip');
+
+export const changeEndpoint = (endpoint) => {
+    connection = new Connection(endpoint, 'singleGossip');
+};
 
 export const privateKeyByteArrayStringToAccount = (privateKeyByteArrayString) => {
     const privateKeyDecoded = privateKeyByteArrayString.split(',').map(s => parseInt(s));

@@ -2,6 +2,12 @@
   <div id="app">
     <p>Solanalotto</p>
     <div>
+      <p>Cluster</p>
+      <select v-model="cluster">
+        <option disabled value="">Cluster</option>
+        <option>devnet</option>
+        <option>localnet</option>
+      </select>
       <ul>
         <li>
           <label>Private key:</label>
@@ -22,7 +28,7 @@
 
 <script>
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { privateKeyByteArrayStringToAccount, getAccountInfo, getLotteriesForProgramId, enterLottery, receiveLotteryWinnings } from './lottery'
+import { changeEndpoint, privateKeyByteArrayStringToAccount, getAccountInfo, getLotteriesForProgramId, enterLottery, receiveLotteryWinnings } from './lottery'
 import CreateLottery from './components/CreateLottery.vue'
 import Lotteries from './components/Lotteries.vue'
 
@@ -30,6 +36,7 @@ export default {
   name: 'App',
   data: function() {
     return {
+      cluster: 'devnet',
       userAccount: null,
       userAccountInfo: null,
       privateKey: '',
@@ -43,6 +50,14 @@ export default {
     Lotteries
   },
   watch: {
+    cluster: async function(value) {
+      const endpoints = {
+        'devnet': 'https://devnet.solana.com',
+        'localnet': 'http://127.0.0.1:8899' 
+      };
+      changeEndpoint(endpoints[value]);
+      this.userAccountInfo = await getAccountInfo(this.userAccount);
+    },
     programId: async function() {
       await this.fetchLotteries();
     },
