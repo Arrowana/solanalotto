@@ -4,9 +4,13 @@ import { LOTTERY_ACCOUNT_DATA_LAYOUT } from './layout';
 
 const connection = new Connection("http://localhost:8899", 'singleGossip');
 
-export const privateKeyByteArrayStringToPublicKey = (privateKeyByteArrayString) => {
+export const privateKeyByteArrayStringToAccount = (privateKeyByteArrayString) => {
     const privateKeyDecoded = privateKeyByteArrayString.split(',').map(s => parseInt(s));
-    return new Account(privateKeyDecoded).publicKey;
+    return new Account(privateKeyDecoded);
+};
+
+export const getAccountInfo = async (account) => {
+    return await connection.getAccountInfo(account.publicKey, 'singleGossip');
 };
 
 export const initLottery = async (

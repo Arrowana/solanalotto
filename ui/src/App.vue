@@ -13,6 +13,7 @@
           <input v-model="programId">
         </li>
       </ul>
+      <p v-if="sol">{{ sol }} SOL</p>
     </div>
     <CreateLottery :privateKey="privateKey" :programId="programId" />
     <Lotteries :lotteries="lotteries" :userAccountPubkey="userAccountPubkey" @enter="onEnter" />
@@ -20,7 +21,8 @@
 </template>
 
 <script>
-import { privateKeyByteArrayStringToPublicKey, getLotteriesForProgramId, enterLottery } from './lottery'
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { privateKeyByteArrayStringToAccount, getAccountInfo, getLotteriesForProgramId, enterLottery } from './lottery'
 import CreateLottery from './components/CreateLottery.vue'
 import Lotteries from './components/Lotteries.vue'
 
@@ -30,6 +32,7 @@ export default {
     return {
       userAccountPubkey: null,
       privateKey: '',
+      sol: null,
       privateKeyError: null,
       programId: '',
       lotteries: []
@@ -43,10 +46,13 @@ export default {
     programId: async function() {
       await this.fetchLotteries();
     },
-    privateKey: function(value) {
+    privateKey: async function(value) {
+      this.privateKeyError = null;
+      this.sol = 0;
       try {
-        this.privateKeyError = null;
-        this.userAccountPubkey = privateKeyByteArrayStringToPublicKey(value).toBase58();
+        const userAccount = privateKeyByteArrayStringToAccount(value);
+        this.sol = (await getAccountInfo(userAccount)).lamports / LAMPORTS_PER_SOL;
+        this.userAccountPubkey = userAccount.publicKey.toBase58();
       }
       catch(e) {
         this.privateKeyError = e.message;
