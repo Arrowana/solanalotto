@@ -1,29 +1,40 @@
 <template>
-  <div id="app">
-    <p>Solanalotto</p>
-    <div>
-      <p>Cluster</p>
-      <select v-model="cluster">
-        <option disabled value="">Cluster</option>
-        <option selected>devnet</option>
-        <option>localnet</option>
-      </select>
-      <ul>
-        <li>
-          <label>Private key:</label>
-          <input v-model="privateKey">
-          <p v-if="privateKeyError">{{ privateKeyError }}</p>
-        </li>
-        <li>
-          <label>Program id:</label>
-          <input v-model="programId">
-        </li>
-      </ul>
-      <p v-if="sol !== null">{{ sol }} SOL</p>
-    </div>
-    <CreateLottery :privateKey="privateKey" :programId="programId" />
-    <Lotteries :lotteries="lotteries" :userAccountPubkey="userAccountPubkey" @enter="onEnter" @receive="onReceive" />
-  </div>
+  <v-app id="app" :style="{ background: $vuetify.theme.themes['dark'].background }">
+    <v-app-bar app>
+      <v-row class="mt-6">
+        <v-col>
+          <v-toolbar-title>Solanalotto</v-toolbar-title>
+        </v-col>
+        <v-col></v-col>
+        <v-col>
+          <v-select v-model="cluster" label="Cluster" :items="clusters"></v-select>
+        </v-col>
+      </v-row>
+    </v-app-bar>
+
+    <v-spacer />
+    <v-main>
+      <v-container>
+        <v-img src="@/assets/solanalotto-neon.jpeg" max-width="25%" class="mx-lg-auto"></v-img>
+      </v-container>
+
+      <v-container>
+        <v-text-field v-model="privateKey" label="Account private key" :error-messages="privateKeyError ? [privateKeyError] : []" :rules="privateKeyRules"></v-text-field>
+        <v-checkbox v-model="customProgramId" label="Choose program ID"></v-checkbox>
+        <v-text-field v-if="customProgramId" v-model="programId" label="Custom program ID"></v-text-field>
+        <p v-if="sol !== null">{{ sol }} SOL</p>
+        <p v-else>Enter private key to reveal SOL balance</p>
+      </v-container>
+      <v-container>
+        <CreateLottery :privateKey="privateKey" :programId="programId" />
+      </v-container>
+      <v-container>
+        <v-row>
+          <Lotteries :lotteries="lotteries" :userAccountPubkey="userAccountPubkey" @enter="onEnter" @receive="onReceive" />
+        </v-row>
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
 
 <script>
@@ -32,17 +43,33 @@ import { changeEndpoint, privateKeyByteArrayStringToAccount, getAccountInfo, get
 import CreateLottery from './components/CreateLottery.vue'
 import Lotteries from './components/Lotteries.vue'
 
+// TODO: Pull that out to config file and make it change on cluster
+const endpoints = {
+  'devnet': {
+    url: 'https://devnet.solana.com',
+    programId: '3zAfBWGppVofNk9Cqfziob3QTLT2BPECmpmj2P66eWNJ'
+  },
+  'localnet': {
+    url: 'http://127.0.0.1:8899',
+    programId: '72MgRTDhBWRveLLJn7D1uz21D4bW76PJd6q1oFGVxbmK'
+  }
+};
+
 export default {
   name: 'App',
   data: function() {
     return {
-      cluster: 'devnet',
+      cluster: 'localnet',
       userAccount: null,
       userAccountInfo: null,
       privateKey: '',
       privateKeyError: null,
       programId: '',
-      lotteries: []
+      lotteries: [],
+      privateKeyRules: [
+        (value) => !!value | 'Required.'
+      ],
+      customProgramId: false
     };
   },
   components: {
@@ -53,16 +80,25 @@ export default {
     cluster: {
       immediate: true,
       handler: async function(value) {
-        const endpoints = {
-          'devnet': 'https://devnet.solana.com',
-          'localnet': 'http://127.0.0.1:8899' 
-        };
-        changeEndpoint(endpoints[value]);
-        this.userAccountInfo = await getAccountInfo(this.userAccount);
+        changeEndpoint(endpoints[value].url);
+        if (this.userAccountInfo) {
+          this.userAccountInfo = await getAccountInfo(this.userAccount);
+        }
       },
     },
-    programId: async function() {
-      await this.fetchLotteries();
+    customProgramId: {
+      immediate: true,
+      handler: function(value) {
+        if (!value) {
+          this.programId = endpoints[this.cluster].programId;
+        }
+      }
+    },
+    programId: {
+      immediate: true,
+      handler: async function() {
+        await this.fetchLotteries();
+      }
     },
     privateKey: async function(value) {
       this.privateKeyError = null;
@@ -82,7 +118,13 @@ export default {
     },
     sol: function() {
       return this.userAccountInfo?.lamports / LAMPORTS_PER_SOL;
-    }
+    },
+    clusters: function() {
+      return Object.keys(endpoints);
+    },
+    theme: function() {
+      return this.$vuetify.theme.dark ? "dark" : "light";
+    },
   },
   methods: {
     onEnter: async function(lottery) {
@@ -113,17 +155,3 @@ export default {
   }
 }
 </script>
-
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-ul {
-  list-style-type: none;
-}
-</style>

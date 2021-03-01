@@ -1,1 +1,7 @@
-module.exports = { publicPath: '/solanalotto/' }
+module.exports = {
+  publicPath: '/solanalotto/',
+
+  transpileDependencies: [
+    'vuetify'
+  ]
+}

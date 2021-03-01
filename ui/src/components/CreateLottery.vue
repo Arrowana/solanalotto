@@ -1,8 +1,8 @@
 <template>
   <div>
     <h1>New lottery</h1>
-    <label>Ticket price:</label><input v-model="ticketPrice"> SOL
-    <button v-on:click="create" :disabled="!canCreate()">Create</button>
+    <v-text-field label="Ticket price" v-model.number="ticketPrice" type="number"></v-text-field> SOL
+    <v-btn v-on:click="create" :disabled="!canCreate()">Create</v-btn>
     <p v-if="!canCreate()">Private key and program id required</p>
   </div>
 </template>
