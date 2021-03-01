@@ -5,7 +5,7 @@
       <p>Cluster</p>
       <select v-model="cluster">
         <option disabled value="">Cluster</option>
-        <option>devnet</option>
+        <option selected>devnet</option>
         <option>localnet</option>
       </select>
       <ul>
@@ -50,13 +50,16 @@ export default {
     Lotteries
   },
   watch: {
-    cluster: async function(value) {
-      const endpoints = {
-        'devnet': 'https://devnet.solana.com',
-        'localnet': 'http://127.0.0.1:8899' 
-      };
-      changeEndpoint(endpoints[value]);
-      this.userAccountInfo = await getAccountInfo(this.userAccount);
+    cluster: {
+      immediate: true,
+      handler: async function(value) {
+        const endpoints = {
+          'devnet': 'https://devnet.solana.com',
+          'localnet': 'http://127.0.0.1:8899' 
+        };
+        changeEndpoint(endpoints[value]);
+        this.userAccountInfo = await getAccountInfo(this.userAccount);
+      },
     },
     programId: async function() {
       await this.fetchLotteries();
