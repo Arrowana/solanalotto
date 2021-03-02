@@ -69,7 +69,8 @@ export default {
       privateKeyRules: [
         (value) => !!value | 'Required.'
       ],
-      customProgramId: false
+      customProgramId: false,
+      sol: null,
     };
   },
   components: {
@@ -103,9 +104,10 @@ export default {
     privateKey: async function(value) {
       this.privateKeyError = null;
       this.userAccount = null;
+      this.sol = null;
       try {
         this.userAccount = privateKeyByteArrayStringToAccount(value);
-        this.userAccountInfo = await getAccountInfo(this.userAccount);
+        this.updateUserAccountInfo(this.userAccount);
       }
       catch(e) {
         this.privateKeyError = e.message;
@@ -115,9 +117,6 @@ export default {
   computed: {
     userAccountPubkey: function() {
       return this.userAccount?.publicKey.toBase58();
-    },
-    sol: function() {
-      return this.userAccountInfo?.lamports / LAMPORTS_PER_SOL;
     },
     clusters: function() {
       return Object.keys(endpoints);
@@ -135,7 +134,7 @@ export default {
       );
       console.log(lotteryInfo);
       await this.fetchLotteries();
-      this.userAccountInfo = await getAccountInfo(this.userAccount);
+      await this.updateUserAccountInfo(this.userAccount);
     },
     onReceive: async function(lottery) {
       const lotteryInfo = await receiveLotteryWinnings(
@@ -145,12 +144,17 @@ export default {
       );
       console.log(lotteryInfo);
       await this.fetchLotteries();
-      this.userAccountInfo = await getAccountInfo(this.userAccount);
+      await this.updateUserAccountInfo(this.userAccount);
     },
     fetchLotteries: async function() {
       const lotteries = await getLotteriesForProgramId(this.$data.programId);
       console.log(lotteries);
       this.lotteries = lotteries;
+    },
+    updateUserAccountInfo: async function(userAccount) {
+      const userAccountInfo = await getAccountInfo(userAccount);
+      this.sol = userAccountInfo?.lamports / LAMPORTS_PER_SOL ?? null;
+      this.userAccountInfo = userAccountInfo;
     }
   }
 }
