@@ -11,6 +11,8 @@ use solana_program::{
     system_instruction
 };
 use crate::{instruction::LotteryInstruction, error::LotteryError, state::{Lottery, ENTRANT_COUNT}};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 
 pub struct Processor;
 impl Processor {
@@ -125,7 +127,13 @@ impl Processor {
         }
 
         if entrants_count == ENTRANT_COUNT {
-            lottery_info.winner = lottery_info.entrants[2];  // TODO: Make this random somehow
+            let mut hasher = DefaultHasher::new(); // TODO: This is currently predictable, make this random somehow
+            for entrant in lottery_info.entrants.iter_mut() {
+                entrant.hash(&mut hasher);
+            }
+            
+            let index = hasher.finish() as usize % ENTRANT_COUNT;
+            lottery_info.winner = lottery_info.entrants[index];
         }
 
         Lottery::pack(lottery_info, &mut lottery_account.data.borrow_mut())?;
