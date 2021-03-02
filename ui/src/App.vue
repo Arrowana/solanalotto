@@ -15,18 +15,19 @@
     <v-spacer />
     <v-main>
       <v-container>
-        <v-img src="@/assets/solanalotto-neon.jpeg" max-width="25%" class="mx-lg-auto"></v-img>
+        <v-img src="@/assets/solanalotto-neon.jpeg" max-width="25%" class="mx-auto"></v-img>
       </v-container>
 
       <v-container>
         <v-text-field v-model="privateKey" label="Account private key" :error-messages="privateKeyError ? [privateKeyError] : []" :rules="privateKeyRules"></v-text-field>
+        <p v-if="userAccountPubkey">Pubkey: {{ userAccountPubkey }}</p>
         <v-checkbox v-model="customProgramId" label="Choose program ID"></v-checkbox>
         <v-text-field v-if="customProgramId" v-model="programId" label="Custom program ID"></v-text-field>
         <p v-if="sol !== null">{{ sol }} SOL</p>
         <p v-else>Enter private key to reveal SOL balance</p>
       </v-container>
       <v-container>
-        <CreateLottery :privateKey="privateKey" :programId="programId" />
+        <CreateLottery :privateKey="privateKey" :programId="programId" @create="onCreate" />
       </v-container>
       <v-container>
         <v-row>
@@ -65,7 +66,7 @@ export default {
       privateKey: '',
       privateKeyError: null,
       programId: '',
-      lotteries: [],
+      lotteries: null,
       privateKeyRules: [
         (value) => !!value | 'Required.'
       ],
@@ -81,6 +82,7 @@ export default {
     cluster: {
       immediate: true,
       handler: async function(value) {
+        this.lotteries = null;
         changeEndpoint(endpoints[value].url);
         if (this.userAccountInfo) {
           this.userAccountInfo = await getAccountInfo(this.userAccount);
@@ -146,7 +148,12 @@ export default {
       await this.fetchLotteries();
       await this.updateUserAccountInfo(this.userAccount);
     },
+    onCreate: async function() {
+      await this.fetchLotteries();
+      await this.updateUserAccountInfo(this.userAccount);
+    },
     fetchLotteries: async function() {
+      this.lotteries = null;
       const lotteries = await getLotteriesForProgramId(this.$data.programId);
       console.log(lotteries);
       this.lotteries = lotteries;

@@ -34,6 +34,7 @@ export default {
       );
 
       console.log(`lotteryInfo: ${lotteryInfo.ticketPrice}`);
+      this.$emit('create');
     },
     canCreate: function() {
       return this.$propsprivateKey !== '' && this.$props.programId !== '';
