@@ -4,15 +4,17 @@
     <p>
         Ongoing lotteries
     </p>
-    <v-card v-for="(lottery, index) in lotteries" :key="index" tile class="m-6">
+    <v-card v-for="(lottery, index) in lotteries" :key="index" tile elevation="3" outlined>
         <v-card-title>Lottery account
           <a :href="`https://explorer.solana.com/address/${lottery.lotteryAccountPubkey}?customUrl=http://127.0.0.1:8899&cluster=custom`">{{ lottery.lotteryAccountPubkey.slice(0, 8) }}...</a>
         </v-card-title>
 
-        <v-list-item>Ticket price: {{ lottery.ticketPrice / LAMPORTS_PER_SOL }} SOL</v-list-item>
-        <v-list-item>Winnings: {{ lottery.ticketPrice / LAMPORTS_PER_SOL * lottery.max_entrant_count}} SOL</v-list-item>
-        <v-list-item>Entrants: {{ lottery.entrants.length }}/{{ lottery.max_entrant_count }}</v-list-item>
-        <v-list-item v-if="lottery.winnerAccountPubkey">Winner <a href="">{{ lottery.winnerAccountPubkey }}</a></v-list-item>
+        <v-card-text>
+          <v-list-item>Ticket price: {{ lottery.ticketPrice / LAMPORTS_PER_SOL }} SOL</v-list-item>
+          <v-list-item>Winnings: {{ lottery.ticketPrice / LAMPORTS_PER_SOL * lottery.max_entrant_count}} SOL</v-list-item>
+          <v-list-item>Entrants: {{ lottery.entrants.length }}/{{ lottery.max_entrant_count }}</v-list-item>
+          <v-list-item v-if="lottery.winnerAccountPubkey">Winner <a href="">{{ lottery.winnerAccountPubkey }}</a></v-list-item>
+        </v-card-text>
 
         <v-card-actions>
           <v-btn v-if="userAccountPubkey && userAccountPubkey === lottery.winnerAccountPubkey" color="green lighten-1" v-on:click="receive(lottery)">Claim</v-btn>
