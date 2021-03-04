@@ -6,6 +6,7 @@
           <v-toolbar-title>Solanalotto</v-toolbar-title>
         </v-col>
         <v-col></v-col>
+        <v-col>sollet.io <v-btn v-on:click="connect">Connect</v-btn></v-col>
         <v-col>
           <v-select v-model="cluster" label="Cluster" :items="clusters"></v-select>
         </v-col>
@@ -39,15 +40,16 @@
 </template>
 
 <script>
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { changeEndpoint, privateKeyByteArrayStringToAccount, getAccountInfo, getLotteriesForProgramId, enterLottery, receiveLotteryWinnings } from './lottery'
-import CreateLottery from './components/CreateLottery.vue'
-import Lotteries from './components/Lotteries.vue'
+import { LAMPORTS_PER_SOL, clusterApiUrl } from '@solana/web3.js';
+import Wallet from '@project-serum/sol-wallet-adapter';
+import { changeEndpoint, getAccountInfo, getLotteriesForProgramId, initLottery, enterLottery, receiveLotteryWinnings } from './lottery';
+import CreateLottery from './components/CreateLottery.vue';
+import Lotteries from './components/Lotteries.vue';
 
 // TODO: Pull that out to config file and make it change on cluster
 const endpoints = {
   'devnet': {
-    url: 'https://devnet.solana.com',
+    url: clusterApiUrl('devnet'),
     programId: '3zAfBWGppVofNk9Cqfziob3QTLT2BPECmpmj2P66eWNJ'
   },
   'localnet': {
@@ -56,12 +58,15 @@ const endpoints = {
   }
 };
 
+const wallet = new Wallet('https://www.sollet.io');
+wallet.on('disconnect', () => console.log('Disconnected'));
+
 export default {
   name: 'App',
   data: function() {
     return {
       cluster: 'devnet',
-      userAccount: null,
+      userPublicKey: null,
       userAccountInfo: null,
       privateKey: '',
       privateKeyError: null,
@@ -71,12 +76,19 @@ export default {
         (value) => !!value | 'Required.'
       ],
       customProgramId: false,
-      sol: null,
+      sol: null
     };
   },
   components: {
     CreateLottery,
     Lotteries
+  },
+  created: function() {
+    console.log('created');
+    wallet.on('connect', publicKey => {
+      console.log('Connected to ' + publicKey.toBase58());
+      this.userPublicKey = publicKey;
+    });
   },
   watch: {
     cluster: {
@@ -84,9 +96,9 @@ export default {
       handler: async function(value) {
         this.lotteries = null;
         changeEndpoint(endpoints[value].url);
-        if (this.userAccountInfo) {
-          this.userAccountInfo = await getAccountInfo(this.userAccount);
-        }
+        // if (this.userAccountInfo) {
+        //   this.userAccountInfo = await getAccountInfo(this.userAccount);
+        // }
       },
     },
     customProgramId: {
@@ -103,22 +115,22 @@ export default {
         await this.fetchLotteries();
       }
     },
-    privateKey: async function(value) {
-      this.privateKeyError = null;
-      this.userAccount = null;
-      this.sol = null;
-      try {
-        this.userAccount = privateKeyByteArrayStringToAccount(value);
-        this.updateUserAccountInfo(this.userAccount);
-      }
-      catch(e) {
-        this.privateKeyError = e.message;
-      }
-    }
+    // privateKey: async function(value) {
+    //   this.privateKeyError = null;
+    //   this.userAccount = null;
+    //   this.sol = null;
+    //   try {
+    //     this.userAccount = privateKeyByteArrayStringToAccount(value);
+    //     this.updateUserAccountInfo(this.userAccount);
+    //   }
+    //   catch(e) {
+    //     this.privateKeyError = e.message;
+    //   }
+    // }
   },
   computed: {
     userAccountPubkey: function() {
-      return this.userAccount?.publicKey.toBase58();
+      return this.userPublicKey?.toBase58();
     },
     clusters: function() {
       return Object.keys(endpoints);
@@ -128,19 +140,24 @@ export default {
     },
   },
   methods: {
+    connect: async function() {
+      console.log('connect');
+      await wallet.connect();
+      console.log('connected?');
+    },
     onEnter: async function(lottery) {
       const lotteryInfo = await enterLottery(
-        this.privateKey,
+        wallet,
         lottery.lotteryAccountPubkey,
         this.programId
       );
       console.log(lotteryInfo);
       await this.fetchLotteries();
-      await this.updateUserAccountInfo(this.userAccount);
+      //await this.updateUserAccountInfo(this.userAccount);
     },
     onReceive: async function(lottery) {
       const lotteryInfo = await receiveLotteryWinnings(
-        this.privateKey,
+        wallet,
         lottery.lotteryAccountPubkey,
         this.programId,
       );
@@ -148,7 +165,14 @@ export default {
       await this.fetchLotteries();
       await this.updateUserAccountInfo(this.userAccount);
     },
-    onCreate: async function() {
+    onCreate: async function(ticketPrice) {
+      const lotteryInfo = await initLottery(
+        wallet,
+        ticketPrice,
+        this.programId
+      );
+
+      console.log(`lotteryInfo: ${lotteryInfo.ticketPrice}`);
       await this.fetchLotteries();
       await this.updateUserAccountInfo(this.userAccount);
     },

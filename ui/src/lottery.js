@@ -1,4 +1,4 @@
-import { Account, Connection, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Account, Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import BN from 'bn.js';
 import { LOTTERY_ACCOUNT_DATA_LAYOUT } from './layout';
 
@@ -8,21 +8,15 @@ export const changeEndpoint = (endpoint) => {
     connection = new Connection(endpoint, 'singleGossip');
 };
 
-export const privateKeyByteArrayStringToAccount = (privateKeyByteArrayString) => {
-    const privateKeyDecoded = privateKeyByteArrayString.split(',').map(s => parseInt(s));
-    return new Account(privateKeyDecoded);
-};
-
-export const getAccountInfo = async (account) => {
-    return await connection.getAccountInfo(account.publicKey, 'singleGossip');
+export const getAccountInfo = async (publicKey) => {
+    return await connection.getAccountInfo(publicKey, 'singleGossip');
 };
 
 export const initLottery = async (
-    privateKeyByteArray,
+    wallet,
     ticketPrice,
     lotteryProgramIdString) => {
-    const privateKeyDecoded = privateKeyByteArray.split(',').map(s => parseInt(s));
-    const initializerAccount = new Account(privateKeyDecoded);
+    const initializerAccount = wallet;
     console.log(`initializer pubKey: ${initializerAccount.publicKey.toBase58()}`);
     const lotteryProgramId = new PublicKey(lotteryProgramIdString);
 
@@ -35,22 +29,26 @@ export const initLottery = async (
         programId: lotteryProgramId,
     });
 
-    const ixData = Buffer.concat([Buffer.from([0]), initializerAccount.publicKey.toBuffer()]);
-    const initLotteryIx = new TransactionInstruction({
-        programId: lotteryProgramId,
-        keys: [
-            { pubkey: lotteryAccount.publicKey, isSigner: false, isWritable: true },
-            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
-        ],
-        data: ixData
-    });
+    //const ixData = Buffer.concat([Buffer.from([0]), initializerAccount.publicKey.toBuffer()]);
+    // const initLotteryIx = new TransactionInstruction({
+    //     programId: lotteryProgramId,
+    //     keys: [
+    //         { pubkey: lotteryAccount.publicKey, isSigner: false, isWritable: true },
+    //         { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+    //     ],
+    //     data: ixData
+    // });
     
     const tx = new Transaction()
-        .add(createLotteryAccountIx, initLotteryIx);
-    const signature = await connection.sendTransaction(tx, [initializerAccount, lotteryAccount], {skipPreflight: false, preflightCommitment: 'singleGossip'});
+        .add(createLotteryAccountIx);//, initLotteryIx);
+    tx.recentBlockhash = (await connection.getRecentBlockhash()).blockhash;
+    const signed = await wallet.signTransaction(tx);
+    //tx.addSignature(lotteryAccount.publicKey, lotteryAccount.)
+    const signature = await connection.sendRawTransaction(signed.serialize(), {skipPreflight: false, preflightCommitment: 'singleGossip'});
+    //const signature = await connection.sendTransaction(tx, [initializerAccount, lotteryAccount], {skipPreflight: false, preflightCommitment: 'singleGossip'});
     console.log(`Tx signature: ${signature}`);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await connection.confirmTransaction(signature);
 
     const lotteryAccountInfo = await connection.getAccountInfo(lotteryAccount.publicKey, 'singleGossip');
     return lotteryAccountInfoToLotteryInfo(lotteryAccount.publicKey, lotteryAccountInfo);

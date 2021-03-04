@@ -13,6 +13,7 @@
   },
   "main": "index.js",
   "dependencies": {
+    "@project-serum/sol-wallet-adapter": "^0.1.5",
     "@solana/spl-token": "0.0.13",
     "@solana/web3.js": "^0.91.2",
     "bn.js": "^5.1.3",

@@ -17,8 +17,6 @@
 </template>
 
 <script>
-import { initLottery } from '../lottery'
-
 export default {
   data: function() { return {ticketPrice: 1}; },
   props: {
@@ -27,14 +25,7 @@ export default {
   },
   methods: {
     create: async function() {
-      const lotteryInfo = await initLottery(
-        this.$props.privateKey,
-        this.$data.ticketPrice,
-        this.$props.programId
-      );
-
-      console.log(`lotteryInfo: ${lotteryInfo.ticketPrice}`);
-      this.$emit('create');
+      this.$emit('create', this.ticketPrice);
     },
     canCreate: function() {
       return this.$propsprivateKey !== '' && this.$props.programId !== '';
