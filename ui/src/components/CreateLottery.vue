@@ -9,7 +9,7 @@
       </v-col>
       <v-col cols="6" md="4">
         <v-container>
-          <v-btn v-on:click="create" :disabled="!canCreate()">Create</v-btn>
+          <v-btn v-on:click="create" :disabled="!canCreate">Create</v-btn>
         </v-container>
       </v-col>
     </v-row>
@@ -20,15 +20,11 @@
 export default {
   data: function() { return {ticketPrice: 1}; },
   props: {
-    privateKey: {type: String, required: true},
-    programId: {type: String, required: true}
+    canCreate: {type: Boolean, required: true},
   },
   methods: {
     create: async function() {
       this.$emit('create', this.ticketPrice);
-    },
-    canCreate: function() {
-      return this.$propsprivateKey !== '' && this.$props.programId !== '';
     }
   }
 }

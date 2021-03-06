@@ -1,3 +1,4 @@
+use solana_program::sysvar::clock::Clock;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -114,6 +115,9 @@ impl Processor {
                 system_program_account.clone(),
             ],
         )?;
+
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
 
         // Write entry in entrants
         // TODO: Do not allow payer to enter more than once

@@ -20,19 +20,18 @@
       </v-container>
 
       <v-container>
-        <v-text-field v-model="privateKey" label="Account private key" :error-messages="privateKeyError ? [privateKeyError] : []" :rules="privateKeyRules"></v-text-field>
-        <p v-if="userAccountPubkey">Pubkey: {{ userAccountPubkey }}</p>
+        <p v-if="this.userPublicKey !== null">Pubkey: {{ this.userPublicKey.toBase58() }}</p>
+        <v-alert border="left" color="red" type="warning" dark v-else>Connect wallet to reveal balance and interact with lotteries</v-alert>
+        <p v-if="sol !== null">{{ sol }} SOL</p>
         <v-checkbox v-model="customProgramId" label="Choose program ID"></v-checkbox>
         <v-text-field v-if="customProgramId" v-model="programId" label="Custom program ID"></v-text-field>
-        <p v-if="sol !== null">{{ sol }} SOL</p>
-        <p v-else>Enter private key to reveal SOL balance</p>
       </v-container>
       <v-container>
-        <CreateLottery :privateKey="privateKey" :programId="programId" @create="onCreate" />
+        <CreateLottery :canCreate="this.userPublicKey !== null" @create="onCreate" />
       </v-container>
       <v-container>
         <v-row>
-          <Lotteries :lotteries="lotteries" :userAccountPubkey="userAccountPubkey" @enter="onEnter" @receive="onReceive" />
+          <Lotteries :lotteries="lotteries" :userAccountPubkey="this.userPublicKey !== null && this.userPublicKey.toBase58()" @enter="onEnter" @receive="onReceive" />
         </v-row>
       </v-container>
     </v-main>
@@ -46,7 +45,7 @@ import { changeEndpoint, getAccountInfo, getLotteriesForProgramId, initLottery, 
 import CreateLottery from './components/CreateLottery.vue';
 import Lotteries from './components/Lotteries.vue';
 
-// TODO: Pull that out to config file and make it change on cluster
+// TODO: Pull that out to config file
 const endpoints = {
   'devnet': {
     url: clusterApiUrl('devnet'),
@@ -67,15 +66,9 @@ export default {
     return {
       cluster: 'devnet',
       userPublicKey: null,
-      userAccountInfo: null,
-      privateKey: '',
-      privateKeyError: null,
       programId: '',
-      lotteries: null,
-      privateKeyRules: [
-        (value) => !!value | 'Required.'
-      ],
       customProgramId: false,
+      lotteries: null,
       sol: null
     };
   },
@@ -84,22 +77,21 @@ export default {
     Lotteries
   },
   created: function() {
-    console.log('created');
     wallet.on('connect', publicKey => {
       console.log('Connected to ' + publicKey.toBase58());
       this.userPublicKey = publicKey;
+    });
+    wallet.on('disconnect', () => {
+      this.userPublicKey = null;
     });
   },
   watch: {
     cluster: {
       immediate: true,
       handler: async function(value) {
-        this.lotteries = null;
+        this.lotteries = null; // We have changed cluster, discard lotteries
         changeEndpoint(endpoints[value].url);
-        // if (this.userAccountInfo) {
-        //   this.userAccountInfo = await getAccountInfo(this.userAccount);
-        // }
-      },
+      }
     },
     customProgramId: {
       immediate: true,
@@ -115,18 +107,9 @@ export default {
         await this.fetchLotteries();
       }
     },
-    // privateKey: async function(value) {
-    //   this.privateKeyError = null;
-    //   this.userAccount = null;
-    //   this.sol = null;
-    //   try {
-    //     this.userAccount = privateKeyByteArrayStringToAccount(value);
-    //     this.updateUserAccountInfo(this.userAccount);
-    //   }
-    //   catch(e) {
-    //     this.privateKeyError = e.message;
-    //   }
-    // }
+    userPublicKey: async function() {
+      this.updateUser();
+    }
   },
   computed: {
     userAccountPubkey: function() {
@@ -141,9 +124,7 @@ export default {
   },
   methods: {
     connect: async function() {
-      console.log('connect');
       await wallet.connect();
-      console.log('connected?');
     },
     onEnter: async function(lottery) {
       const lotteryInfo = await enterLottery(
@@ -153,7 +134,7 @@ export default {
       );
       console.log(lotteryInfo);
       await this.fetchLotteries();
-      //await this.updateUserAccountInfo(this.userAccount);
+      await this.updateUser();
     },
     onReceive: async function(lottery) {
       const lotteryInfo = await receiveLotteryWinnings(
@@ -163,7 +144,7 @@ export default {
       );
       console.log(lotteryInfo);
       await this.fetchLotteries();
-      await this.updateUserAccountInfo(this.userAccount);
+       await this.updateUser();
     },
     onCreate: async function(ticketPrice) {
       const lotteryInfo = await initLottery(
@@ -174,7 +155,7 @@ export default {
 
       console.log(`lotteryInfo: ${lotteryInfo.ticketPrice}`);
       await this.fetchLotteries();
-      await this.updateUserAccountInfo(this.userAccount);
+      await this.updateUser();
     },
     fetchLotteries: async function() {
       this.lotteries = null;
@@ -182,10 +163,9 @@ export default {
       console.log(lotteries);
       this.lotteries = lotteries;
     },
-    updateUserAccountInfo: async function(userAccount) {
-      const userAccountInfo = await getAccountInfo(userAccount);
+    updateUser: async function() {
+      const userAccountInfo = await getAccountInfo(this.userPublicKey);
       this.sol = userAccountInfo?.lamports / LAMPORTS_PER_SOL ?? null;
-      this.userAccountInfo = userAccountInfo;
     }
   }
 }
