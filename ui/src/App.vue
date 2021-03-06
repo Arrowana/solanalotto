@@ -108,7 +108,7 @@ export default {
       }
     },
     userPublicKey: async function() {
-      this.updateUser();
+      await this.updateUser();
     }
   },
   computed: {
@@ -144,7 +144,7 @@ export default {
       );
       console.log(lotteryInfo);
       await this.fetchLotteries();
-       await this.updateUser();
+      await this.updateUser();
     },
     onCreate: async function(ticketPrice) {
       const lotteryInfo = await initLottery(
@@ -164,8 +164,13 @@ export default {
       this.lotteries = lotteries;
     },
     updateUser: async function() {
-      const userAccountInfo = await getAccountInfo(this.userPublicKey);
-      this.sol = userAccountInfo?.lamports / LAMPORTS_PER_SOL ?? null;
+      if (this.userPublicKey) {
+        const userAccountInfo = await getAccountInfo(this.userPublicKey);
+        this.sol = userAccountInfo ? userAccountInfo.lamports / LAMPORTS_PER_SOL : 0;
+      }
+      else {
+        this.sol = null;
+      }
     }
   }
 }
